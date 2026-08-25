@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+
+# Engine build artefacts
+engine/build/
+engine/dist/
+engine/output/
+engine/work/
+engine/_work/
+engine/INBOX/
+engine/DELIVERY/
+engine/assets/fonts/flat/
+
+# Shell
+shell/node_modules/
+shell/dist/
+shell/src-tauri/target/
+shell/src-tauri/gen/
+
+# Test corpus — books are not redistributable
+engine/testdata/*.pdf
+!engine/testdata/.gitkeep
+
+# Local config
+.env
+*.local
+
+# OS / editor
+Thumbs.db
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea/

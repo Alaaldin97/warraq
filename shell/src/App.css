@@ -1,0 +1,230 @@
+/* Warraq shell styling. Fluent tokens do the heavy lifting; this file only
+   handles layout and the few product-specific surfaces. */
+
+:root {
+  --rail-w: 56px;
+  --status-h: 28px;
+  --accent: #0E6E6E;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: var(--rail-w) 1fr;
+  grid-template-rows: 1fr var(--status-h);
+  grid-template-areas:
+    "rail main"
+    "status status";
+  height: 100vh;
+}
+
+/* --------------------------------------------------------------- rail */
+.rail {
+  grid-area: rail;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0;
+  border-right: 1px solid var(--colorNeutralStroke2);
+  background: var(--colorNeutralBackground3);
+}
+
+.brand {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 20px;
+  font-weight: 700;
+  /* the brand mark is an Arabic letter; give it a serif face */
+  font-family: "Amiri", "Times New Roman", serif;
+}
+
+.rail-btn {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--colorNeutralForeground2);
+  cursor: pointer;
+  transition: background 150ms ease-out;
+}
+.rail-btn:hover { background: var(--colorNeutralBackground3Hover); }
+.rail-btn.active {
+  background: var(--colorNeutralBackground1);
+  color: var(--accent);
+}
+
+/* --------------------------------------------------------------- main */
+.main {
+  grid-area: main;
+  overflow-y: auto;
+  background: var(--colorNeutralBackground2);
+}
+
+.view {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 32px 28px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.view.center {
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+
+.muted { color: var(--colorNeutralForeground3); }
+.section { margin-top: 18px; }
+
+/* Arabic titles must render right-to-left even inside an LTR shell. */
+.rtl-aware {
+  direction: rtl;
+  unicode-bidi: plaintext;
+  text-align: start;
+  font-family: "Amiri", var(--fontFamilyBase);
+}
+
+/* ----------------------------------------------------------- dropzone */
+.dropzone {
+  margin-top: 18px;
+  padding: 44px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  border: 2px dashed var(--colorNeutralStroke2);
+  border-radius: 12px;
+  background: var(--colorNeutralBackground1);
+  color: var(--colorNeutralForeground1);
+  cursor: pointer;
+  transition: border-color 150ms ease-out, background 150ms ease-out;
+}
+.dropzone:hover {
+  border-color: var(--accent);
+  background: var(--colorNeutralBackground1Hover);
+}
+
+/* -------------------------------------------------------------- cards */
+.panel {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.panel.warn { border-left: 3px solid #8A5A00; }
+.panel.plan { border-left: 3px solid var(--accent); }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.book-card {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+/* ----------------------------------------------------------- findings */
+.finding {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.spark { color: var(--accent); }
+.ok-icon { color: #1F7A3D; flex-shrink: 0; }
+.warn-icon { color: #8A5A00; flex-shrink: 0; }
+
+/* ------------------------------------------------------------- stages */
+.stage {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 3px 0;
+  color: var(--colorNeutralForeground3);
+}
+.stage.running { color: var(--colorNeutralForeground1); font-weight: 600; }
+.stage.done { color: var(--colorNeutralForeground2); }
+.stage-icon { width: 16px; display: inline-block; }
+.stage.running .stage-icon { animation: spin 1.2s linear infinite; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ------------------------------------------------------------ results */
+.result-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.score {
+  min-width: 92px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.file {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 0;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+/* ----------------------------------------------------------- status bar */
+.status {
+  grid-area: status;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  border-top: 1px solid var(--colorNeutralStroke2);
+  background: var(--colorNeutralBackground3);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #8A5A00;
+}
+.dot.ok { background: #1F7A3D; }
+
+.amiri-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--accent);
+}

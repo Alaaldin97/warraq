@@ -1,0 +1,80 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  engine:
+    name: Engine tests
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install pymupdf opencv-python-headless numpy fonttools `
+                      arabic-reshaper pytest pyinstaller
+
+      # Calibre and Tesseract are probed at runtime; the suite skips the
+      # checks that need them rather than failing.
+      - name: Run regression tests
+        working-directory: engine
+        run: python -m pytest tests -q
+
+      - name: Build sidecar
+        working-directory: engine
+        run: python -m PyInstaller engine.spec --noconfirm --log-level WARN
+
+      - name: Check bundle size
+        working-directory: engine
+        shell: pwsh
+        run: |
+          $mb = (Get-ChildItem dist\warraq-engine -Recurse -File |
+                 Measure-Object Length -Sum).Sum / 1MB
+          Write-Host ("bundle: {0:N1} MB" -f $mb)
+          # Guard against accidental dependency bloat.
+          if ($mb -gt 260) { throw "sidecar bundle regressed to $mb MB" }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: warraq-engine
+          path: engine/dist/warraq-engine/
+          retention-days: 7
+
+  shell:
+    name: Shell build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: shell/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: shell/src-tauri
+
+      - name: Install dependencies
+        working-directory: shell
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: shell
+        run: npx tsc --noEmit
+
+      - name: Build
+        working-directory: shell
+        run: npm run tauri build -- --no-bundle
