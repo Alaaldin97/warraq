@@ -862,48 +862,6 @@ Discovered through failure. Each is a regression test, not a comment.
 9. **Never subset an Arabic font.**
 10. Acrobat 26.x removed the OCR JavaScript API, and Acrobat has never supported
     Arabic OCR. Do not attempt this integration.
-11. **Never ship a PyInstaller `--onefile` bundle.** It extracts `python3xx.dll`
-    to `%TEMP%` on every launch; Windows Application Control (WDAC/AppLocker),
-    standard on managed corporate devices, blocks that and the engine dies with
-    *"An Application Control policy has blocked this file"*. Use `--onedir`,
-    which also starts faster and supports delta updates.
-12. **Every child process must be launched with stdin detached.** When the
-    engine runs as an RPC sidecar its own stdin is the command pipe; a child
-    that inherits it blocks forever at 0% CPU. `ebook-convert` deadlocked this
-    way during bring-up. All child processes go through `kbo/proc.py`.
-13. The content-coverage check must compare against **exactly the pages that
-    were converted**. Comparing a page-range conversion against the whole book
-    reports a false content loss and fails the QA gate.
-14. In RPC mode, **stdout belongs to the protocol**. Any stray `print()` in the
-    engine corrupts the JSON stream; `serve()` redirects `sys.stdout` to stderr
-    and keeps the real handle for the emitter only.
-
-## Appendix C — Measured performance
-
-225-page scanned Arabic book, 6 workers, Azure DI:
-
-| Build | Time | Note |
-|---|---|---|
-| Initial Azure integration | 587 s | Azure + full Tesseract comparison pass |
-| **With Tesseract-skip** | **431.7 s** | Skips the second pass when Azure ≥ 90 confidence — **26% faster**, no quality change |
-
-Frozen sidecar (PyInstaller onedir):
-
-| Metric | Value | Target | Status |
-|---|---|---|---|
-| Bundle size | 183 MB | < 80 MB installer | ⚠ needs compression in the installer |
-| Cold start | 2.64 s | < 2 s | ⚠ close |
-| Arabic conversion (20 pp) | 79 s, score 98/100 | PASS | ✓ |
-
-Bundle composition after trimming (253 MB → 183 MB): cv2 71 MB · pymupdf 36 MB ·
-numpy 26 MB · tessdata 16 MB · assets 7 MB. Removed: FFmpeg video I/O (27 MB),
-`eng_best` and `osd` traineddata (25 MB), lxml and PIL (17 MB).
-
-**Remaining size lever:** `cv2.pyd` is 71 MB and the engine uses perhaps 15 of
-its functions. Replacing OpenCV with targeted NumPy/SciPy implementations would
-roughly halve the bundle, but carries real regression risk against a validated
-image pipeline. Deferred to Phase 4 with a golden-image test suite as the
-prerequisite.
 
 ## Appendix B — Decision record index
 
