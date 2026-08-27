@@ -21,12 +21,14 @@ def _configure_bundled_paths() -> None:
     if os.path.isdir(tessdata) and not os.environ.get("KBO_TESSDATA"):
         os.environ["KBO_TESSDATA"] = tessdata
     os.environ.setdefault("KBO_ASSETS", os.path.join(root, "assets"))
-    # stdout is the JSON-RPC channel; never let a stray encoding error break it
-    try:
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-    except Exception:
-        pass
+    # The RPC channel carries Arabic filenames and text. Windows defaults the
+    # standard streams to the ANSI codepage, which mangles them, so force UTF-8
+    # on all three regardless of how the process was launched.
+    for stream in (sys.stdin, sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
 
 
 def main() -> int:

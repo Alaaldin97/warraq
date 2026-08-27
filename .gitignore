@@ -30,9 +30,22 @@ engine/testdata/*.pdf
 .env
 *.local
 
+# Developer scratch — may contain machine-specific paths
+capture.py
+verify_out.txt
+verify_err.txt
+
+# Commercial planning — not part of the open-source project
+docs/COMMERCIAL.md
+
 # OS / editor
 Thumbs.db
 .DS_Store
 .vscode/*
 !.vscode/extensions.json
 .idea/
+
+# Stray debug logs
+engine/_sw_run.log
+_dbg_*
+*_run.log

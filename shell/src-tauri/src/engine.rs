@@ -47,8 +47,11 @@ impl EngineState {
 
 /// Locate the engine executable.
 ///
-/// In a packaged build it sits next to the shell binary; during development we
-/// fall back to the PyInstaller output, then to running from source.
+/// Order differs by build profile on purpose:
+///   * Release — always the engine bundled beside the app.
+///   * Debug   — prefer the Python source so edits take effect on restart.
+///     A stale `engine/dist` build silently shadowing the source cost real
+///     debugging time during bring-up.
 fn engine_command() -> Result<Command, String> {
     let exe_dir = std::env::current_exe()
         .map_err(|e| e.to_string())?
@@ -61,28 +64,37 @@ fn engine_command() -> Result<Command, String> {
         return Ok(Command::new(bundled));
     }
 
-    // repo-relative dev locations
     let repo = exe_dir
         .ancestors()
         .find(|p| p.join("engine").join("kbo").exists())
         .map(|p| p.to_path_buf());
 
-    if let Some(root) = repo {
-        let frozen = root
-            .join("engine")
-            .join("dist")
-            .join("warraq-engine")
-            .join("warraq-engine.exe");
-        if frozen.exists() {
-            return Ok(Command::new(frozen));
-        }
+    let Some(root) = repo else {
+        return Err("could not locate the Warraq engine".into());
+    };
+    let engine_dir = root.join("engine");
+
+    let from_source = || {
         let mut c = Command::new("python");
         c.arg("-u").arg("-m").arg("kbo.cli");
-        c.current_dir(root.join("engine"));
-        return Ok(c);
+        c.current_dir(&engine_dir);
+        c
+    };
+
+    if cfg!(debug_assertions) {
+        if engine_dir.join("kbo").join("rpc.py").exists() {
+            return Ok(from_source());
+        }
     }
 
-    Err("could not locate the Warraq engine".into())
+    let frozen = engine_dir
+        .join("dist")
+        .join("warraq-engine")
+        .join("warraq-engine.exe");
+    if frozen.exists() {
+        return Ok(Command::new(frozen));
+    }
+    Ok(from_source())
 }
 
 #[tauri::command]
@@ -93,7 +105,13 @@ pub fn engine_start(app: AppHandle, state: State<EngineState>) -> Result<Value, 
     }
 
     let mut cmd = engine_command()?;
+    let engine_desc = format!("{:?}", cmd.get_program());
     cmd.arg("--rpc")
+        // The RPC channel carries Arabic filenames. Without these, Python
+        // decodes stdin using the Windows ANSI codepage and the paths arrive
+        // as mojibake.
+        .env("PYTHONUTF8", "1")
+        .env("PYTHONIOENCODING", "utf-8")
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::null());
@@ -145,7 +163,7 @@ pub fn engine_start(app: AppHandle, state: State<EngineState>) -> Result<Value, 
     });
     // The UI waits for the `ready` banner on engine://message rather than
     // blocking here, so the window can paint immediately.
-    Ok(json!({ "started": true }))
+    Ok(json!({ "started": true, "engine": engine_desc }))
 }
 
 fn request(proc: &mut EngineProcess, method: &str, params: Value)
@@ -222,9 +240,63 @@ pub fn engine_cancel(state: State<EngineState>, job_id: String) -> Result<Value,
 }
 
 #[tauri::command]
+pub fn engine_get_settings(state: State<EngineState>) -> Result<Value, String> {
+    state.with(|p| request(p, "getSettings", json!({})))
+}
+
+#[tauri::command]
+pub fn engine_set_settings(state: State<EngineState>, settings: Value)
+    -> Result<Value, String>
+{
+    state.with(|p| request(p, "setSettings", settings))
+}
+
+/// Sends one small page to the configured resource. Slower than the other
+/// calls because it makes a real round trip to Azure on purpose.
+#[tauri::command]
+pub fn engine_test_azure(state: State<EngineState>) -> Result<Value, String> {
+    state.with(|p| request(p, "testAzure", json!({})))
+}
+
+#[tauri::command]
 pub fn engine_status(state: State<EngineState>) -> Result<Value, String> {
     let guard = state.inner.lock().map_err(|e| e.to_string())?;
     Ok(json!({ "running": guard.is_some() }))
+}
+
+/// Keeps only the paths that still exist as directories.
+///
+/// Remembered output folders can be moved or deleted between runs, so the UI
+/// filters its list through this before offering to open anything.
+#[tauri::command]
+pub fn existing_dirs(paths: Vec<String>) -> Vec<String> {
+    paths
+        .into_iter()
+        .filter(|p| std::path::Path::new(p).is_dir())
+        .collect()
+}
+
+/// Warraq output folders found in the usual places.
+///
+/// Books are written to a `Warraq` folder beside their source PDF, so the
+/// common locations are the folders people keep PDFs in. This lets the app
+/// offer "open my books" on a first run, before it has recorded anything
+/// itself.
+#[tauri::command]
+pub fn discover_output_dirs() -> Vec<String> {
+    let Some(home) = std::env::var_os("USERPROFILE")
+        .or_else(|| std::env::var_os("HOME"))
+    else {
+        return Vec::new();
+    };
+    let home = std::path::PathBuf::from(home);
+
+    ["Downloads", "Documents", "Desktop", "OneDrive/Documents", "Books"]
+        .iter()
+        .map(|d| home.join(d).join("Warraq"))
+        .filter(|p| p.is_dir())
+        .map(|p| p.to_string_lossy().into_owned())
+        .collect()
 }
 
 #[tauri::command]

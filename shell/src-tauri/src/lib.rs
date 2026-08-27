@@ -25,6 +25,11 @@ pub fn run() {
             engine::engine_convert,
             engine::engine_cancel,
             engine::engine_status,
+            engine::engine_get_settings,
+            engine::engine_set_settings,
+            engine::engine_test_azure,
+            engine::existing_dirs,
+            engine::discover_output_dirs,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Warraq");

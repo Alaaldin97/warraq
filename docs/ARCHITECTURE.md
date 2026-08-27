@@ -64,15 +64,14 @@ tribal knowledge.
    vs 82.7 confidence, and a **70× reduction in junk characters**. Tesseract
    remains the offline fallback, never the default when Azure is reachable.
 
-### 1.5 Commercial framing
+### 1.5 Scope
 
 | | |
 |---|---|
 | **Category** | Prosumer document-conversion utility |
-| **Wedge** | Arabic typography quality — the thing every competitor gets wrong |
-| **Moat** | The font-flattening engine (§6.6) and on-device-verified pre-shaping. Both non-obvious; both required hardware testing to discover. |
-| **Model** | One-time licence + BYO Azure key; or subscription with pooled OCR credits |
-| **Beachhead** | Arabic-reading Kindle owners, Islamic-studies and Arabic-literature academics, digital-library projects |
+| **Focus** | Arabic typography quality — the thing most converters get wrong |
+| **Core technique** | The font-flattening engine (§6.6) and on-device-verified pre-shaping, both established by hardware testing |
+| **Audience** | Arabic-reading e-reader owners, Islamic-studies and Arabic-literature academics, digital-library projects |
 
 ---
 
@@ -152,7 +151,7 @@ Warraq
 │   ├── Welcome & value proposition
 │   ├── Engine health check          ← auto-detects Calibre/Tesseract
 │   ├── Arabic OCR setup             ← Azure sign-in OR offline mode
-│   └── Licence activation
+│   └── Ready to convert
 ├── Library (home)
 │   ├── Drop zone (primary CTA)
 │   ├── Recent conversions
@@ -201,8 +200,6 @@ outcomes, not technology:
 Choosing *Best quality* opens Entra sign-in. Endpoint discovery is automatic via
 Azure Resource Graph — **the user never pastes an endpoint URL.** Privacy
 disclosure sits on this screen, not buried in a EULA.
-
-**4 — Licence.** Key entry or 14-day trial. 30-day offline grace after activation.
 
 ### 4.3 Library (home)
 
@@ -566,7 +563,6 @@ not something a competitor reaches without hardware testing.
 | Concern | Control |
 |---|---|
 | Azure credentials | **Never stored.** Entra tokens per-session; optional API keys to Windows Credential Manager via DPAPI, never plaintext on disk |
-| Licence key | DPAPI-encrypted, machine-bound, 30-day offline grace |
 | Privacy consent | Explicit opt-in before any page leaves the device; reversible; visible in status bar |
 | DRM | Detected and refused. No circumvention path exists, by design |
 | Sidecar integrity | Engine binary signed; shell verifies signature before spawn |
@@ -749,16 +745,16 @@ process-level isolation, already in place)*.
 **Acceptance.** 225-page Arabic book < 6 min; peak RSS < 2 GB on a 1000-page
 book; UI never blocks > 100 ms.
 
-### Phase 5 — Commercial release (4 weeks)
+### Phase 5 — Release engineering (4 weeks)
 
-**Scope.** Licensing + activation; auto-update; crash reporting; opt-in
-telemetry; docs; EV code signing; installer localisation (AR/EN).
-**Risks.** EV certificate lead time *(mitigate: procure in Phase 1)*; SmartScreen
+**Scope.** Auto-update; crash reporting; opt-in
+telemetry; docs; code signing; installer localisation (AR/EN).
+**Risks.** Certificate lead time *(mitigate: procure early)*; SmartScreen
 reputation *(mitigate: sign early, build reputation during beta)*.
 **Acceptance.** Clean install/update/uninstall on Win 10 22H2 and Win 11; no
-SmartScreen warning; licence enforcement verified; offline grace works.
+SmartScreen warning.
 
-**Total: 22 weeks to commercial release.**
+**Total: 22 weeks to 1.0.**
 
 ### Version roadmap
 
@@ -783,16 +779,16 @@ silent edit.
 
 | # | Risk | Sev | Prob | Mitigation |
 |---|---|---|---|---|
-| R1 | Azure DI pricing makes per-book cost unattractive | High | Med | Per-book cost estimate before converting; BYO-key model; Tesseract offline tier is genuinely usable |
-| R2 | Amazon changes Kindle font/shaping behaviour in firmware | High | Low | All three font modes retained; on-device regression suite per firmware; page-exact output is firmware-proof |
+| R1 | Azure DI pricing makes per-book cost unattractive | High | Med | Per-book cost estimate before converting; BYO-key model; Tesseract offline tier is genuinely usable || R2 | Amazon changes Kindle font/shaping behaviour in firmware | High | Low | All three font modes retained; on-device regression suite per firmware; page-exact output is firmware-proof |
 | R3 | PyInstaller bundle triggers antivirus false positives | Med | **High** | EV code signing; submit to AV vendors pre-launch; avoid UPX on the sidecar |
-| R4 | Calibre GPL v3 constrains commercial distribution | High | Med | **Do not bundle Calibre in-process.** Invoke as separate executable; install-on-first-run. Legal review before Phase 5 |
+| R4 | Calibre GPL v3 constrains distribution | High | Med | **Do not bundle Calibre in-process.** Invoke as separate executable; install-on-first-run. |
 | R5 | Engine rewrite pressure ("make it all C#") | High | Med | This document. The font-flattening engine alone is months to port with no user benefit |
 | R6 | Arabic UI RTL bugs undermine credibility | Med | Med | Native-reader review gate in Phase 3; RTL screenshots in every PR |
 | R7 | Azure endpoint discovery fails in restricted tenants | Med | Med | Manual endpoint entry fallback; clear diagnostics pane |
 | R8 | Large books exhaust memory | Med | Low | Chunked processing in place; page-window streaming in Phase 4 |
 | R9 | Font licence compliance | High | Low | Amiri, Noto, Scheherazade, Lateef, Markazi are all SIL OFL — embedding permitted. Ship licence texts; audit future additions |
 | R10 | KFX expectations unmet | Low | Med | Already handled honestly in the report; document that AZW3 is fully supported on Oasis 9 |
+| R11 | PyMuPDF is AGPL-3.0 unless licensed commercially | High | **Certain** | Warraq is released under AGPL-3.0, which satisfies it. Any closed-source redistribution would require an Artifex commercial licence. See `THIRD-PARTY-NOTICES.md` |
 
 **Top risk to actively manage: R4 (Calibre licensing).** It affects distribution
 architecture — resolve in Phase 1, not Phase 5.

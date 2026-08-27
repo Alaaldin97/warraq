@@ -12,6 +12,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+import pathlib
 from . import proc
 import time
 import urllib.error
@@ -22,6 +23,56 @@ MODEL = "prebuilt-read"
 
 ENDPOINT_ENV = "KBO_AZURE_DI_ENDPOINT"
 KEY_ENV = "KBO_AZURE_DI_KEY"
+
+
+# ---------------------------------------------------------------- config
+# The engine is spawned by the desktop shell, which inherits whatever
+# environment the shell itself was launched from. That makes ambient
+# environment variables an unreliable place to keep the Azure endpoint: a
+# shell started before the variable was defined silently falls back to
+# offline OCR. The config file below is the durable source of truth, with
+# environment variables kept as an override for CLI use and CI.
+def config_path() -> pathlib.Path:
+    override = os.environ.get("KBO_CONFIG")
+    if override:
+        return pathlib.Path(override)
+    appdata = os.environ.get("APPDATA")
+    if appdata:
+        return pathlib.Path(appdata) / "Warraq" / "config.json"
+    return pathlib.Path.home() / ".config" / "warraq" / "config.json"
+
+
+def read_config() -> dict:
+    try:
+        with open(config_path(), "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def write_config(values: dict) -> pathlib.Path:
+    """Persist settings. A key whose value is None is left alone; a key whose
+    value is the empty string is removed, which is how the UI clears a field."""
+    path = config_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    merged = read_config()
+    for k, v in values.items():
+        if v is None:
+            continue
+        if isinstance(v, str) and not v.strip():
+            merged.pop(k, None)
+        else:
+            merged[k] = v.strip() if isinstance(v, str) else v
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(merged, f, ensure_ascii=False, indent=2)
+    return path
+
+
+def _setting(env_name: str, config_key: str) -> str | None:
+    value = os.environ.get(env_name) or read_config().get(config_key)
+    value = (value or "").strip()
+    return value or None
 
 
 # ------------------------------------------------------------------ auth
@@ -39,16 +90,20 @@ def get_token() -> str | None:
 
 
 def endpoint() -> str | None:
-    return os.environ.get(ENDPOINT_ENV)
+    return _setting(ENDPOINT_ENV, "azureEndpoint")
+
+
+def api_key() -> str | None:
+    return _setting(KEY_ENV, "azureKey")
 
 
 def available() -> bool:
-    return bool(endpoint()) and (bool(os.environ.get(KEY_ENV)) or bool(get_token()))
+    return bool(endpoint()) and (bool(api_key()) or bool(get_token()))
 
 
 def _headers() -> dict:
     h = {"Content-Type": "application/octet-stream"}
-    key = os.environ.get(KEY_ENV)
+    key = api_key()
     if key:
         h["Ocp-Apim-Subscription-Key"] = key
     else:
@@ -161,9 +216,66 @@ def ocr_pdf_file(path: str, timeout: int = 900) -> dict:
 def status() -> dict:
     ep = endpoint()
     return {"endpoint": ep,
-            "auth": ("key" if os.environ.get(KEY_ENV)
+            "auth": ("key" if api_key()
                      else ("entra-token" if get_token() else "none")),
             "ready": available(),
+            "configPath": str(config_path()),
             "model": MODEL, "api_version": API_VERSION,
             "privacy": ("Page images are sent to this Azure resource for "
                         "recognition. Requires explicit user consent.")}
+
+
+def test_connection(timeout: int = 60) -> dict:
+    """Send one tiny page to the configured resource and report what happened.
+
+    "Saved" is not the same as "works": the endpoint may be misspelt, the
+    resource may be the wrong kind, or the signed-in identity may lack the
+    Cognitive Services User role. Those failures should surface in settings,
+    not halfway through a book.
+    """
+    ep = endpoint()
+    if not ep:
+        return {"ok": False, "reason": "No endpoint configured.",
+                "hint": "Paste the endpoint URL from your Azure resource."}
+    if not (api_key() or get_token()):
+        return {"ok": False,
+                "reason": "No credentials. Run 'az login', or supply an API key.",
+                "hint": "Warraq uses your signed-in Azure identity by default."}
+
+    # A 1-page PDF built inline: no fixture on disk, no dependency on a book.
+    pdf = (b"%PDF-1.4\n"
+           b"1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
+           b"2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
+           b"3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 100]"
+           b"/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>endobj\n"
+           b"4 0 obj<</Length 44>>stream\n"
+           b"BT /F1 24 Tf 20 40 Td (Warraq test) Tj ET\n"
+           b"endstream endobj\n"
+           b"5 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj\n"
+           b"trailer<</Root 1 0 R>>\n")
+
+    r = analyze_pdf(pdf, timeout=timeout, retries=1)
+    if r.get("ok"):
+        return {"ok": True,
+                "endpoint": ep,
+                "auth": "key" if api_key() else "entra-token",
+                "reason": "Connected. Azure will be used for scanned books."}
+
+    reason = str(r.get("reason", "unknown error"))
+    hint = "Check the endpoint URL and that the resource is running."
+    low = reason.lower()
+    if "401" in reason or "unauthor" in low:
+        hint = ("Credentials were rejected. Run 'az login', or check the API "
+                "key. Entra sign-in also needs the 'Cognitive Services User' "
+                "role on the resource.")
+    elif "403" in reason or "forbidden" in low:
+        hint = ("Access denied. The signed-in identity needs the 'Cognitive "
+                "Services User' role on this resource.")
+    elif "404" in reason:
+        hint = ("Endpoint reachable but the model was not found. Confirm this "
+                "is an Azure AI Services or Document Intelligence resource.")
+    elif "getaddrinfo" in low or "name or service" in low or "dns" in low:
+        hint = "Endpoint hostname could not be resolved. Check for a typo."
+    elif "timed out" in low or "timeout" in low:
+        hint = "The resource did not respond in time. Check network access."
+    return {"ok": False, "reason": reason[:400], "hint": hint}

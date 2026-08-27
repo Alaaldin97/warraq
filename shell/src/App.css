@@ -53,6 +53,7 @@ html, body, #root {
 }
 
 .rail-btn {
+  position: relative;
   width: 40px;
   height: 40px;
   display: grid;
@@ -68,6 +69,21 @@ html, body, #root {
 .rail-btn.active {
   background: var(--colorNeutralBackground1);
   color: var(--accent);
+}
+
+.rail-badge {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: rail-pulse 1.4s ease-in-out infinite;
+}
+@keyframes rail-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.3; }
 }
 
 /* --------------------------------------------------------------- main */
@@ -123,6 +139,12 @@ html, body, #root {
   border-color: var(--accent);
   background: var(--colorNeutralBackground1Hover);
 }
+.dropzone.dragging {
+  border-color: var(--accent);
+  border-style: solid;
+  background: var(--colorNeutralBackground1Selected);
+  transform: scale(1.01);
+}
 
 /* -------------------------------------------------------------- cards */
 .panel {
@@ -146,6 +168,119 @@ html, body, #root {
   flex-direction: column;
   gap: 6px;
   align-items: flex-start;
+}
+
+/* --------------------------------------------------------- OCR settings */
+.mode-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.mode-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 12px 14px;
+  text-align: start;
+  border: 1px solid var(--colorNeutralStroke2);
+  border-radius: 6px;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 150ms ease-out, background 150ms ease-out;
+}
+.mode-card:hover { background: var(--colorNeutralBackground3Hover); }
+.mode-card.on {
+  border-color: var(--accent);
+  border-width: 2px;
+  padding: 11px 13px;
+}
+
+.test-result {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--colorNeutralBackground3);
+}
+.test-result.ok  { border-left: 3px solid #1F7A3D; }
+.test-result.bad { border-left: 3px solid #A4262C; }
+
+/* --------------------------------------------------------------- queue */
+.library-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.library-head > div { display: flex; flex-direction: column; gap: 4px; }
+
+.menu-forget {
+  cursor: pointer;
+  opacity: 0.5;
+  padding: 0 4px;
+}
+.menu-forget:hover { opacity: 1; }
+
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 18px;
+}
+.section-actions { display: flex; gap: 8px; }
+
+.queue {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.queue-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+}
+.queue-row.converting { border-left: 3px solid var(--accent); }
+.queue-row.failed     { border-left: 3px solid #A4262C; }
+.queue-row.done       { border-left: 3px solid #1F7A3D; }
+
+.queue-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.queue-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.queue-title > *:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.queue-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 /* ----------------------------------------------------------- findings */
@@ -221,6 +356,24 @@ html, body, #root {
   background: #8A5A00;
 }
 .dot.ok { background: #1F7A3D; }
+
+.status-link {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-size: 12px;
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.status-link.muted-link {
+  color: var(--colorNeutralForeground3);
+  text-decoration-style: dotted;
+}
+.status-link.muted-link:hover { color: var(--accent); }
 
 .amiri-chip {
   display: inline-flex;

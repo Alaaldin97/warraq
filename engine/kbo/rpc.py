@@ -123,29 +123,42 @@ class Emitter:
 
 
 class JobRegistry:
-    """Tracks running jobs so they can be cancelled."""
+    """Tracks running jobs so they can be cancelled.
+
+    A job can be cancelled before the worker reaches it, so cancellation is
+    also remembered for ids that have not started yet - otherwise removing a
+    queued book from the UI would leave the engine converting it anyway.
+    """
 
     def __init__(self):
         self._jobs: dict[str, threading.Event] = {}
+        self._cancelled: set[str] = set()
         self._lock = threading.Lock()
 
     def start(self, job_id: str) -> threading.Event:
         ev = threading.Event()
         with self._lock:
+            if job_id in self._cancelled:
+                self._cancelled.discard(job_id)
+                ev.set()
             self._jobs[job_id] = ev
         return ev
 
     def cancel(self, job_id: str) -> bool:
+        if not job_id:
+            return False
         with self._lock:
             ev = self._jobs.get(job_id)
-        if ev:
-            ev.set()
-            return True
-        return False
+            if ev is None:
+                self._cancelled.add(job_id)
+                return True
+        ev.set()
+        return True
 
     def finish(self, job_id: str) -> None:
         with self._lock:
             self._jobs.pop(job_id, None)
+            self._cancelled.discard(job_id)
 
     def active(self) -> list[str]:
         with self._lock:
@@ -182,11 +195,51 @@ def _capabilities() -> dict:
                           "languages": ocr.languages() if ocr.available() else []},
             "azure": {"available": az["ready"], "auth": az["auth"],
                       "endpoint": az["endpoint"], "model": az["model"],
+                      "configPath": az["configPath"],
                       "privacy": az["privacy"]},
             "kfx": kfx.status(),
         },
         "stages": [{"id": k, "label": lbl, "weight": w} for k, lbl, w in STAGES],
     }
+
+
+def _get_settings() -> dict:
+    """Everything the settings screen needs to render its current state."""
+    from kbo import azure_ocr
+    cfg = azure_ocr.read_config()
+    az = azure_ocr.status()
+    return {
+        "ocrMode": "azure" if az["ready"] else "offline",
+        "azureEndpoint": cfg.get("azureEndpoint", ""),
+        # Never return the key itself; only whether one is stored.
+        "hasAzureKey": bool(cfg.get("azureKey")),
+        "azure": az,
+        "configPath": az["configPath"],
+        "envOverride": bool(os.environ.get(azure_ocr.ENDPOINT_ENV)),
+    }
+
+
+def _set_settings(params: dict) -> dict:
+    """Write settings, then report the resulting state.
+
+    Clearing the endpoint is how the user chooses offline mode, so an empty
+    string is a meaningful value here rather than "leave unchanged".
+    """
+    from kbo import azure_ocr
+    values: dict = {}
+    if "azureEndpoint" in params:
+        ep = (params.get("azureEndpoint") or "").strip()
+        # Tolerate a pasted key page or a trailing path.
+        if ep and not ep.startswith(("http://", "https://")):
+            ep = "https://" + ep
+        values["azureEndpoint"] = ep
+    if "azureKey" in params:
+        values["azureKey"] = params.get("azureKey") or ""
+    path = azure_ocr.write_config(values)
+    result = _get_settings()
+    result["saved"] = True
+    result["configPath"] = str(path)
+    return result
 
 
 def _engine_version() -> str:
@@ -326,6 +379,13 @@ def _convert(job_id: str, params: dict, emit: Emitter,
              cancel: threading.Event) -> dict:
     """Run the full pipeline, translating engine logs into stage events."""
     from kbo import cli
+
+    # Fail fast with a code the shell can explain. Without this the missing
+    # file surfaces from deep inside the PDF reader as a generic ENGINE_ERROR,
+    # and the user is told nothing useful. A book can disappear between being
+    # inspected and reaching the front of the queue.
+    if not os.path.exists(params["path"]):
+        raise FileNotFoundError(params["path"])
 
     stage_state = {"current": None}
 
@@ -521,6 +581,16 @@ def _quality_score(res: dict) -> int:
 
 # ---------------------------------------------------------------- server
 def serve(stdin=None, stdout=None) -> int:
+    # The RPC channel carries Arabic filenames and text. On Windows the standard
+    # streams default to the ANSI codepage, which corrupts them (an Arabic path
+    # arrives as mojibake and the file is then "not found"). Force UTF-8 before
+    # reading or writing anything.
+    for stream in (sys.stdin, sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
     stdin = stdin or sys.stdin
     # The protocol owns stdout. Any stray print() inside the engine would
     # corrupt the JSON stream, so we capture the real stdout for the emitter
@@ -541,6 +611,10 @@ def serve(stdin=None, stdout=None) -> int:
             job_id, params = item
             cancel = jobs.start(job_id)
             try:
+                # Cancelled while it sat in the queue - drop it without
+                # touching the file.
+                if cancel.is_set():
+                    raise Cancelled()
                 payload = _convert(job_id, params, emit, cancel)
                 payload["jobId"] = job_id
                 emit.result(job_id, payload)
@@ -593,6 +667,13 @@ def serve(stdin=None, stdout=None) -> int:
             elif method == "cancel":
                 ok = jobs.cancel(params.get("jobId"))
                 emit.send({"id": rid, "result": {"cancelled": ok}})
+            elif method == "getSettings":
+                emit.send({"id": rid, "result": _get_settings()})
+            elif method == "setSettings":
+                emit.send({"id": rid, "result": _set_settings(params)})
+            elif method == "testAzure":
+                from kbo import azure_ocr
+                emit.send({"id": rid, "result": azure_ocr.test_connection()})
             elif method == "shutdown":
                 emit.send({"id": rid, "result": {"bye": True}})
                 return 0

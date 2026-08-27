@@ -62,6 +62,7 @@ export interface Capabilities {
       auth: string;
       endpoint: string | null;
       model: string;
+      configPath: string;
       privacy: string;
     };
     kfx: { can_generate_kfx: boolean; reason: string; note: string };
@@ -170,6 +171,26 @@ type AnyMessage =
   | { id: string; result: ConversionResult }
   | { id: string; error: { code: string; message: string; detail?: string } };
 
+export type { AnyMessage };
+
+export interface EngineSettings {
+  ocrMode: "azure" | "offline";
+  azureEndpoint: string;
+  hasAzureKey: boolean;
+  configPath: string;
+  envOverride: boolean;
+  azure: Capabilities["tools"]["azure"] & { api_version?: string };
+  saved?: boolean;
+}
+
+export interface AzureTestResult {
+  ok: boolean;
+  reason: string;
+  hint?: string;
+  endpoint?: string;
+  auth?: string;
+}
+
 export const engine = {
   start: () => invoke<{ started?: boolean; alreadyRunning?: boolean }>("engine_start"),
   stop: () => invoke<{ stopped: boolean }>("engine_stop"),
@@ -180,6 +201,15 @@ export const engine = {
   convert: (options: ConvertOptions) =>
     invoke<{ jobId: string }>("engine_convert", { options }),
   cancel: (jobId: string) => invoke<{ cancelled: boolean }>("engine_cancel", { jobId }),
+  /** Filters a list of folders down to the ones that still exist. */
+  existingDirs: (paths: string[]) => invoke<string[]>("existing_dirs", { paths }),
+  /** Warraq output folders found in the usual document locations. */
+  discoverOutputDirs: () => invoke<string[]>("discover_output_dirs"),
+  getSettings: () => invoke<EngineSettings>("engine_get_settings"),
+  setSettings: (settings: { azureEndpoint?: string; azureKey?: string }) =>
+    invoke<EngineSettings>("engine_set_settings", { settings }),
+  /** Makes a real round trip to Azure; expect this to take a few seconds. */
+  testAzure: () => invoke<AzureTestResult>("engine_test_azure"),
 };
 
 /** Subscribe to every engine message. Returns an unlisten function. */
@@ -195,44 +225,12 @@ export function onEngineClosed(handler: () => void): Promise<UnlistenFn> {
 
 /**
  * Run a conversion and resolve when the engine reports a terminal message.
- * Progress is delivered through `onProgress` as it happens.
+ *
+ * Removed in favour of central routing in App: this opened a second listener
+ * per job and, because `jobId` was only known after the `convert` invoke
+ * resolved, its id guard let another job's events through in the meantime.
+ * Progress is now dispatched from the single app-level listener by job id.
  */
-export function runConversion(
-  options: ConvertOptions,
-  onProgress?: (e: StageEvent) => void,
-  onWarning?: (e: WarningEvent) => void,
-): Promise<ConversionResult> {
-  return new Promise(async (resolve, reject) => {
-    let unlisten: UnlistenFn | undefined;
-    let jobId: string | undefined;
-
-    unlisten = await onEngineMessage((msg) => {
-      const anyMsg = msg as { id?: string };
-      if (jobId && anyMsg.id !== jobId) return;
-
-      if ("result" in msg) {
-        unlisten?.();
-        resolve(msg.result);
-      } else if ("error" in msg) {
-        unlisten?.();
-        reject(new Error(`${msg.error.code}: ${msg.error.message}`));
-      } else if ("event" in msg && msg.event === "stage") {
-        onProgress?.(msg);
-      } else if ("event" in msg && msg.event === "warning") {
-        onWarning?.(msg);
-      }
-    });
-
-    try {
-      const started = await engine.convert(options);
-      jobId = started.jobId;
-    } catch (err) {
-      unlisten?.();
-      reject(err);
-    }
-  });
-}
-
 export function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`;

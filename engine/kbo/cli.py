@@ -27,7 +27,25 @@ RENDER_DPI = 300
 
 
 def log(msg: str):
-    print(f"[{time.strftime('%H:%M:%S')}] {msg}", flush=True)
+    # Arabic book titles and filenames flow through here. On Windows the console
+    # defaults to a legacy code page that cannot represent them, which turned a
+    # progress message into a crash. Reconfigure once, and degrade to replacement
+    # characters rather than failing if that is not possible.
+    try:
+        print(f"[{time.strftime('%H:%M:%S')}] {msg}", flush=True)
+    except UnicodeEncodeError:
+        enc = getattr(sys.stdout, "encoding", None) or "utf-8"
+        safe = msg.encode(enc, errors="replace").decode(enc, errors="replace")
+        print(f"[{time.strftime('%H:%M:%S')}] {safe}", flush=True)
+
+
+def _use_utf8_streams() -> None:
+    """Make the standard streams carry Arabic text safely."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
 
 
 def safe_name(s: str) -> str:
@@ -732,6 +750,9 @@ def main(argv=None):
     if argv_list and argv_list[0] == "--rpc":
         from .rpc import serve
         return serve()
+
+    # serve() handles its own stream setup; the CLI needs it here.
+    _use_utf8_streams()
 
     ap = argparse.ArgumentParser(description="Kindle Oasis Book Optimizer")
     ap.add_argument("pdf")
