@@ -17,15 +17,20 @@ Status: **Approved for build** — pending stakeholder sign-off on §10
 
 ### 1.1 What already exists
 
-A **fully working, empirically validated conversion engine** — 3,396 lines of
-Python across 18 modules. This is not a proof of concept. It has processed three
-real books end to end and passes its own automated quality gate:
+A **fully working, empirically validated conversion engine** — ~4,800 lines of
+Python across 19 modules. This is not a proof of concept. It has processed real
+books end to end and passes its own automated quality gate:
 
 | Book | Pages | Type | Route | OCR engine | Confidence | QA gate | Time |
 |---|---|---|---|---|---|---|---|
 | مع الناس — علي الطنطاوي | 225 | Arabic, scanned | OCR → reflow | Azure DI | 95.0 | **PASS** | 587 s |
+| صور وخواطر — علي الطنطاوي | 288 | Arabic, scanned | OCR → reflow | Azure DI | 95.7 | **PASS** | 499 s |
+| صور وخواطر (first 30 pp) | 30 | Arabic, scanned | OCR → reflow | Tesseract | 78.9 | **PASS** | 103 s |
 | The Adventures of Sherlock Holmes | 271 | English, native text | Reflow | — | — | **PASS** | 59 s |
 | Western Story Magazine (1922) | 160 | English, scanned + junk layer | OCR → reflow | Tesseract | 87.5 | **PASS** | 139 s |
+
+Rows 2 and 3 were re-measured on 27 Aug 2026. The others are from earlier runs
+and have not been re-verified since.
 
 ### 1.2 The strategic decision
 
@@ -60,8 +65,10 @@ tribal knowledge.
    Amiri renders as disconnected letters. The only way to ship a custom Arabic
    face is to **pre-shape** text into presentation forms. Verified on hardware
    across three build variants.
-3. **Azure Document Intelligence beats Tesseract decisively on Arabic** — 95.0
-   vs 82.7 confidence, and a **70× reduction in junk characters**. Tesseract
+   3. **Azure Document Intelligence outperforms Tesseract on Arabic** — 95.0
+   vs 82.7 confidence on مع الناس, and a large reduction in junk characters.
+   A 30-page re-measurement on صور وخواطر gave 95.3 vs 78.9, with Tesseract
+   leaving 4 pages too weak to trust versus Azure's 0. Tesseract
    remains the offline fallback, never the default when Azure is reachable.
 
 ### 1.5 Scope
@@ -194,12 +201,21 @@ outcomes, not technology:
 
 | Option | Copy shown | Reality |
 |---|---|---|
-| **Best quality** *(recommended)* | "Uses Microsoft Azure AI. ~99% accurate on Arabic print. Pages are sent to your own Azure account for recognition." | Azure DI `prebuilt-read` |
-| **Offline only** | "Everything stays on this PC. Good accuracy, more OCR typos on older print." | Tesseract `ara` |
+| **Best quality** | "Uses Microsoft Azure AI. Better on Arabic print. Pages are sent to your own Azure account for recognition." | Azure DI `prebuilt-read` |
+| **Offline only** *(default)* | "Everything stays on this PC. Good accuracy, more OCR typos on older print." | Tesseract `ara` |
 
-Choosing *Best quality* opens Entra sign-in. Endpoint discovery is automatic via
-Azure Resource Graph — **the user never pastes an endpoint URL.** Privacy
-disclosure sits on this screen, not buried in a EULA.
+> **As built (v0.9), this differs from the design above.** Offline is the
+> default, not Azure. The user **does** paste an endpoint URL into Settings;
+> automatic discovery via Azure Resource Graph is not implemented. Auth is
+> `az login` (Entra) or an optional pasted API key — there is no in-app Entra
+> sign-in flow. A **Test connection** action performs a real recognition call
+> and reports the specific failure reason.
+>
+> The "~99% accurate" figure was never substantiated and has been withdrawn.
+> Measured on a scanned Arabic book, 30 pages: Azure 95.3 mean confidence vs
+> Tesseract 78.9, both passing the quality gate. See the main README.
+
+Privacy disclosure sits on this screen, not buried in a EULA.
 
 ### 4.3 Library (home)
 
@@ -560,15 +576,18 @@ not something a competitor reaches without hardware testing.
 
 ### 6.7 Security model
 
-| Concern | Control |
-|---|---|
-| Azure credentials | **Never stored.** Entra tokens per-session; optional API keys to Windows Credential Manager via DPAPI, never plaintext on disk |
-| Privacy consent | Explicit opt-in before any page leaves the device; reversible; visible in status bar |
-| DRM | Detected and refused. No circumvention path exists, by design |
-| Sidecar integrity | Engine binary signed; shell verifies signature before spawn |
-| WebView surface | Tauri capability allowlist — filesystem scoped to workspace + chosen output dirs |
-| Telemetry | Opt-in, anonymous, no document content, no filenames |
-| Updates | Signed delta packages; public key pinned in binary |
+This table is the **target** model. Items not yet implemented are marked; do not
+read it as a description of current behaviour.
+
+| Concern | Control | Status |
+|---|---|---|
+| Azure credentials | Entra tokens per-session, never persisted. Optional API keys to Windows Credential Manager via DPAPI | ⚠️ **Not implemented.** Entra tokens are per-session as described, but an optional API key is currently written in **plaintext** to `%APPDATA%\Warraq\config.json`. Prefer `az login`, or `KBO_AZURE_DI_KEY` for CI. Tracked before 1.0 |
+| Privacy consent | Explicit opt-in before any page leaves the device; reversible; visible in status bar | Partial — mode is explicit and reversible in Settings and shown in the status bar; there is no separate first-run consent dialog |
+| DRM | Detected and refused. No circumvention path exists, by design | Implemented |
+| Sidecar integrity | Engine binary signed; shell verifies signature before spawn | Not implemented — packaging is Phase 5 |
+| WebView surface | Tauri capability allowlist — filesystem scoped to workspace + chosen output dirs | Implemented |
+| Telemetry | Opt-in, anonymous, no document content, no filenames | Not implemented — Warraq currently sends no telemetry at all |
+| Updates | Signed delta packages; public key pinned in binary | Not implemented — Phase 5 |
 
 ### 6.8 Performance model (measured)
 
@@ -823,14 +842,14 @@ architecture — resolve in Phase 1, not Phase 5.
 ```
 warraq/
 ├── engine/            # Python — unchanged from prototype
-│   ├── kbo/           #   18 modules, 3396 lines
+│   ├── kbo/           #   19 modules, ~4800 lines
 │   ├── assets/fonts/  #   Amiri + profiles (OFL)
 │   ├── tests/         #   golden-file regression
 │   └── rpc.py         #   NEW: stdio JSON-RPC wrapper
 ├── shell/
 │   ├── src-tauri/     # Rust: sidecar, credentials, updater
 │   └── src/           # React + Fluent UI v9
-├── installer/         # WiX
+├── installer/         # WiX — planned, not yet created
 └── docs/              # this document + ADRs
 ```
 
