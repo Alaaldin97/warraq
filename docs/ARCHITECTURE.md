@@ -117,7 +117,7 @@ handwritten-manuscript OCR.
 
 ## 3. User Personas
 
-### 3.1 Primary — "Alaaldin", the Arabic reader *(design target)*
+### 3.1 Primary — the Arabic reader *(design target)*
 
 Professional, bilingual, owns a Kindle Oasis. 50–200 Arabic PDFs collected over
 years, mostly Foulabook/archive.org scans of 20th-century print. Reads for

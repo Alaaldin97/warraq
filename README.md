@@ -6,8 +6,7 @@ Turns scanned Arabic books into properly typeset Kindle editions: correct
 right-to-left flow, correct letter joining, preserved diacritics, and
 professional Amiri typography — with an automated quality report that proves it.
 
-Created by **[Alaaldin97](https://github.com/Alaaldin97)**
-· [@Alaaldin97](https://github.com/Alaaldin97)
+Created by [@Alaaldin97](https://github.com/Alaaldin97)
 
 > Status: **pre-alpha**. The conversion engine is validated and production-grade.
 > The desktop shell runs and handles conversion, settings and OCR mode switching;
@@ -663,12 +662,11 @@ Please do not commit books: scanned works are usually still in copyright.
 
 ---
 
-## Author
-
-**Alaaldin97** — [GitHub](https://github.com/Alaaldin97) ·
-[GitHub](https://github.com/Alaaldin97)
+## About
 
 Warraq (وَرَّاق) is the classical Arabic word for a copyist and bookseller —
 the craftsman who reproduced books by hand so they could be read.
+
+Built and maintained by [@Alaaldin97](https://github.com/Alaaldin97).
 
 Copyright © 2026 Alaaldin97. Licensed under AGPL-3.0.

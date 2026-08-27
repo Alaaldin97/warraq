@@ -232,6 +232,13 @@ def _set_settings(params: dict) -> dict:
         # Tolerate a pasted key page or a trailing path.
         if ep and not ep.startswith(("http://", "https://")):
             ep = "https://" + ep
+        # The API key travels in a request header, so plain http would put it
+        # on the wire in clear text. Refuse rather than silently upgrade: if
+        # the user typed http:// deliberately, they need to know it is wrong.
+        if ep.startswith("http://"):
+            return {"saved": False,
+                    "error": "Endpoint must use https://. Refusing to send "
+                             "your credential over an unencrypted connection."}
         values["azureEndpoint"] = ep
     if "azureKey" in params:
         values["azureKey"] = params.get("azureKey") or ""

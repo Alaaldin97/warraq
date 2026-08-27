@@ -50,7 +50,7 @@ project, licensed under the Apache License 2.0.
 ## Shell dependencies
 
 Tauri, React, Fluent UI and the Rust crates in `shell/src-tauri` are MIT or
-MIT/Apache-2.0 dual-licensed. Run `npm run licenses` or `cargo license` for the
+MIT/Apache-2.0 dual-licensed. Run `npx license-checker` or `cargo license` for the
 full resolved list.
 
 ---

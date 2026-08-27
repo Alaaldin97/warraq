@@ -13,9 +13,11 @@ import base64
 import json
 import os
 import pathlib
+import shutil
 from . import proc
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 API_VERSION = "2024-11-30"
@@ -77,8 +79,20 @@ def _setting(env_name: str, config_key: str) -> str | None:
 
 # ------------------------------------------------------------------ auth
 def _az(args: list[str]) -> str:
-    r = proc.run(["az"] + args, capture_output=True, text=True,
-                       shell=True, timeout=120)
+    """Invoke the Azure CLI.
+
+    Resolved through shutil.which rather than shell=True. On Windows `az` is a
+    .cmd, which CreateProcess cannot launch directly, and the obvious fix --
+    shell=True -- routes through cmd.exe, which resolves an unqualified name
+    from the current working directory before PATH. That turns a planted
+    az.bat in the CWD into code execution. which() applies PATHEXT and a safe
+    search order, so the shell is not needed at all.
+    """
+    exe = shutil.which("az")
+    if not exe:
+        return ""
+    r = proc.run([exe] + args, capture_output=True, text=True,
+                 shell=False, timeout=120)
     return (r.stdout or "").strip()
 
 
@@ -111,6 +125,34 @@ def _headers() -> dict:
     return h
 
 
+class _NoCrossHostRedirect(urllib.request.HTTPRedirectHandler):
+    """Refuse redirects that would carry credentials to another host.
+
+    urllib replays the original request headers across redirects, including
+    Ocp-Apim-Subscription-Key and Authorization. A redirect to an attacker
+    host would therefore hand over the credential, so anything that leaves
+    the original host is rejected outright.
+    """
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if not _same_host(req.full_url, newurl):
+            raise urllib.error.HTTPError(
+                req.full_url, code,
+                "cross-host redirect refused (would leak credentials)",
+                headers, fp)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+_opener = urllib.request.build_opener(_NoCrossHostRedirect)
+
+
+def _same_host(a: str, b: str) -> bool:
+    pa, pb = urllib.parse.urlsplit(a), urllib.parse.urlsplit(b)
+    return (pa.scheme == pb.scheme
+            and (pa.hostname or "").lower() == (pb.hostname or "").lower()
+            and pa.port == pb.port)
+
+
 # ------------------------------------------------------------------ core
 def analyze_pdf(pdf_bytes: bytes, timeout: int = 600, retries: int = 4) -> dict:
     """Run prebuilt-read over a PDF (or image) and return the raw result.
@@ -121,6 +163,10 @@ def analyze_pdf(pdf_bytes: bytes, timeout: int = 600, retries: int = 4) -> dict:
     ep = endpoint()
     if not ep:
         return {"ok": False, "reason": f"{ENDPOINT_ENV} not set"}
+    if urllib.parse.urlsplit(ep).scheme != "https":
+        return {"ok": False,
+                "reason": "endpoint must use https - refusing to send the "
+                          "credential over an unencrypted connection"}
     url = (f"{ep.rstrip('/')}/documentintelligence/documentModels/{MODEL}:analyze"
            f"?api-version={API_VERSION}")
 
@@ -131,7 +177,7 @@ def analyze_pdf(pdf_bytes: bytes, timeout: int = 600, retries: int = 4) -> dict:
         try:
             req = urllib.request.Request(url, data=pdf_bytes, headers=_headers(),
                                          method="POST")
-            with urllib.request.urlopen(req, timeout=300) as resp:
+            with _opener.open(req, timeout=300) as resp:
                 op = resp.headers.get("Operation-Location")
         except urllib.error.HTTPError as e:
             body = e.read()[:300]
@@ -145,6 +191,13 @@ def analyze_pdf(pdf_bytes: bytes, timeout: int = 600, retries: int = 4) -> dict:
         if not op:
             last = "no Operation-Location returned"
             continue
+        # The poll URL comes back from the server, and we re-send the
+        # credential to it. Only follow it if it stayed on the resource we
+        # were configured to talk to.
+        if not _same_host(url, op):
+            return {"ok": False,
+                    "reason": "Operation-Location pointed at an unexpected "
+                              "host - refusing to send the credential there"}
 
         deadline = time.time() + timeout
         while time.time() < deadline:
@@ -152,7 +205,7 @@ def analyze_pdf(pdf_bytes: bytes, timeout: int = 600, retries: int = 4) -> dict:
             try:
                 g = urllib.request.Request(op, headers={
                     k: v for k, v in _headers().items() if k != "Content-Type"})
-                with urllib.request.urlopen(g, timeout=90) as resp:
+                with _opener.open(g, timeout=90) as resp:
                     data = json.loads(resp.read())
             except (urllib.error.URLError, ConnectionError, TimeoutError,
                     OSError) as e:
