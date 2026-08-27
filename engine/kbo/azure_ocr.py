@@ -81,15 +81,18 @@ def _setting(env_name: str, config_key: str) -> str | None:
 def _az(args: list[str]) -> str:
     """Invoke the Azure CLI.
 
-    Resolved through shutil.which rather than shell=True. On Windows `az` is a
-    .cmd, which CreateProcess cannot launch directly, and the obvious fix --
-    shell=True -- routes through cmd.exe, which resolves an unqualified name
-    from the current working directory before PATH. That turns a planted
-    az.bat in the CWD into code execution. which() applies PATHEXT and a safe
-    search order, so the shell is not needed at all.
+    Not shell=True: on Windows that routes through cmd.exe, which resolves an
+    unqualified name from the current directory before PATH, so a planted
+    az.bat would run instead of the CLI.
+
+    shutil.which alone is not sufficient either -- on Windows it deliberately
+    emulates the same behaviour, inserting os.curdir at the front of the
+    search path whenever NeedCurrentDirectoryForExePath is true, which is the
+    default. A CWD hit is returned as a relative ".\\az.CMD", so requiring an
+    absolute path rejects it while still accepting any genuine PATH entry.
     """
     exe = shutil.which("az")
-    if not exe:
+    if not exe or not os.path.isabs(exe):
         return ""
     r = proc.run([exe] + args, capture_output=True, text=True,
                  shell=False, timeout=120)
@@ -147,10 +150,21 @@ _opener = urllib.request.build_opener(_NoCrossHostRedirect)
 
 
 def _same_host(a: str, b: str) -> bool:
+    """Compare origin: scheme, host and effective port.
+
+    urlsplit reports port None when the URL omits it, so an explicit :443 and
+    an implicit one would otherwise compare unequal and reject a legitimate
+    Operation-Location.
+    """
     pa, pb = urllib.parse.urlsplit(a), urllib.parse.urlsplit(b)
-    return (pa.scheme == pb.scheme
-            and (pa.hostname or "").lower() == (pb.hostname or "").lower()
-            and pa.port == pb.port)
+    default = {"https": 443, "http": 80}
+
+    def origin(p):
+        return (p.scheme.lower(),
+                (p.hostname or "").lower(),
+                p.port or default.get(p.scheme.lower()))
+
+    return origin(pa) == origin(pb)
 
 
 # ------------------------------------------------------------------ core

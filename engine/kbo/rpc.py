@@ -34,6 +34,7 @@ import queue
 import sys
 import threading
 import traceback
+import urllib.parse
 
 SCHEMA_VERSION = 1
 
@@ -219,6 +220,12 @@ def _get_settings() -> dict:
     }
 
 
+class InvalidSettings(ValueError):
+    """A settings value the user must correct. Reported as a clean RPC error
+    rather than a result, so the UI surfaces it instead of rendering a
+    half-populated settings object."""
+
+
 def _set_settings(params: dict) -> dict:
     """Write settings, then report the resulting state.
 
@@ -229,16 +236,24 @@ def _set_settings(params: dict) -> dict:
     values: dict = {}
     if "azureEndpoint" in params:
         ep = (params.get("azureEndpoint") or "").strip()
-        # Tolerate a pasted key page or a trailing path.
-        if ep and not ep.startswith(("http://", "https://")):
+        # Scheme comparison is case-insensitive per RFC 3986, and people do
+        # paste "HTTPS://...". Normalise the scheme only, never the host.
+        low = ep.lower()
+        if ep and not low.startswith(("http://", "https://")):
             ep = "https://" + ep
-        # The API key travels in a request header, so plain http would put it
-        # on the wire in clear text. Refuse rather than silently upgrade: if
-        # the user typed http:// deliberately, they need to know it is wrong.
-        if ep.startswith("http://"):
-            return {"saved": False,
-                    "error": "Endpoint must use https://. Refusing to send "
-                             "your credential over an unencrypted connection."}
+        elif low.startswith("http://"):
+            # The API key travels in a request header, so plain http would put
+            # it on the wire in clear text. Refuse rather than silently
+            # upgrade: if the user typed http:// deliberately, say so.
+            raise InvalidSettings(
+                "Endpoint must use https://. Refusing to send your "
+                "credential over an unencrypted connection.")
+        elif low.startswith("https://"):
+            ep = "https://" + ep[len("https://"):]
+        if ep:
+            host = urllib.parse.urlsplit(ep).hostname
+            if not host:
+                raise InvalidSettings(f"{ep!r} is not a usable endpoint URL.")
         values["azureEndpoint"] = ep
     if "azureKey" in params:
         values["azureKey"] = params.get("azureKey") or ""
@@ -688,6 +703,9 @@ def serve(stdin=None, stdout=None) -> int:
                 emit.error(rid, "UNKNOWN_METHOD", f"unknown method: {method}")
         except FileNotFoundError as e:
             emit.error(rid, "FILE_NOT_FOUND", str(e))
+        except InvalidSettings as e:
+            # User-correctable input; a stack trace would be noise.
+            emit.error(rid, "INVALID_SETTINGS", str(e))
         except Exception as e:
             emit.error(rid, "ENGINE_ERROR", str(e),
                        traceback.format_exc()[-2000:])
