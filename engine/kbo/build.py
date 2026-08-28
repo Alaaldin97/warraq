@@ -352,7 +352,7 @@ def write_fixed_epub(page_pngs: list[str], out_epub: str, meta: dict,
             'unique-identifier="bookid" prefix="rendition: '
             'http://www.idpf.org/vocab/rendition/#">\n'
             '<metadata xmlns:dc="http://purl.org/dc/elements/1.1/">\n'
-            f'<dc:identifier id="bookid">{uid}</dc:identifier>\n'
+            f'<dc:identifier id="bookid">{html.escape(uid)}</dc:identifier>\n'
             f"<dc:title>{html.escape(meta.get('title', 'Book'))}</dc:title>\n"
             f"<dc:creator>{html.escape(meta.get('author', 'Unknown'))}</dc:creator>\n"
             f"<dc:language>{lang}</dc:language>\n"
