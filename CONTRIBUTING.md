@@ -44,6 +44,37 @@ Both must pass. If you change conversion behaviour, add a regression test —
 Do not commit books. `engine/testdata/*.pdf` is gitignored deliberately:
 scanned books are usually still in copyright and are not ours to redistribute.
 
+## README artwork
+
+`docs/assets/*.svg` is generated, not hand-drawn. Do not edit the SVGs
+directly — change `scripts/make_artwork.py` and regenerate:
+
+```bash
+pip install uharfbuzz
+python scripts/make_artwork.py
+```
+
+The Arabic in those images is drawn as **outlined paths** taken from the Amiri
+font that ships in `engine/assets/`. That is deliberate: GitHub will not load a
+webfont for an image, so live `<text>` would fall back to whatever the reader
+happens to have installed and the Arabic would render disconnected — the exact
+bug this project exists to fix. Outlining keeps the artwork correct everywhere,
+including offline and in forks.
+
+Shaping goes through HarfBuzz rather than being done by hand, because Arabic
+needs both contextual joining (GSUB) and mark placement (GPOS). The shadda in
+وَرَّاق sits at a position only the font knows; guessing it would put the mark in
+the wrong place.
+
+The wordmark lowers the harakat slightly, because Amiri aligns marks to a
+common height for running text and that leaves a visible void above a short
+letter like ra at logotype size. The amount is clamped by `safe_mark_drop()`,
+which measures real glyph bounds, so the marks cannot collide with the letters
+if the text or the font changes.
+
+Output is deterministic, so regenerating without changing the script produces
+byte-identical files and no spurious diff.
+
 ## Licensing of contributions
 
 Warraq is licensed under **AGPL-3.0** (see [`LICENSE`](LICENSE)). This is not a

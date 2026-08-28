@@ -17,8 +17,8 @@ Status: **Approved for build** — pending stakeholder sign-off on §10
 
 ### 1.1 What already exists
 
-A **fully working, empirically validated conversion engine** — ~4,800 lines of
-Python across 19 modules. This is not a proof of concept. It has processed real
+A **fully working, empirically validated conversion engine** — ~4,700 lines of
+Python across 18 modules. This is not a proof of concept. It has processed real
 books end to end and passes its own automated quality gate:
 
 | Book | Pages | Type | Route | OCR engine | Confidence | QA gate | Time |
@@ -842,7 +842,7 @@ architecture — resolve in Phase 1, not Phase 5.
 ```
 warraq/
 ├── engine/            # Python — unchanged from prototype
-│   ├── kbo/           #   19 modules, ~4800 lines
+│   ├── kbo/           #   18 modules, ~4700 lines
 │   ├── assets/fonts/  #   Amiri + profiles (OFL)
 │   ├── tests/         #   golden-file regression
 │   └── rpc.py         #   NEW: stdio JSON-RPC wrapper

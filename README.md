@@ -1,10 +1,22 @@
-# Warraq
+<p align="center">
+  <img src="docs/assets/banner.svg" alt="Warraq — Arabic books, properly typeset for Kindle" width="100%">
+</p>
+
+<p align="center">
+  <a href="#setting-up--the-free-path"><img alt="Free and offline" src="https://img.shields.io/badge/works-free%20%26%20offline-1F5D3A?style=flat-square"></a>
+  <a href="#setting-up--connecting-your-own-azure"><img alt="Optional Azure" src="https://img.shields.io/badge/optional-Azure%20AI-2E6F8E?style=flat-square"></a>
+  <img alt="Platform" src="https://img.shields.io/badge/platform-Windows-C9A227?style=flat-square">
+  <a href="LICENSE"><img alt="Licence" src="https://img.shields.io/badge/licence-AGPL--3.0-A6552F?style=flat-square"></a>
+  <img alt="Tests" src="https://img.shields.io/badge/tests-97%20passing-1F5D3A?style=flat-square">
+</p>
+
+---
 
 **Arabic PDF → Kindle-ready ebooks, for Windows.**
 
 Turns scanned Arabic books into properly typeset Kindle editions: correct
-right-to-left flow, correct letter joining, preserved diacritics, and
-professional Amiri typography — with an automated quality report that proves it.
+right-to-left flow, correct letter joining, and professional Amiri typography —
+with an automated quality report that proves it.
 
 Created by [@Alaaldin97](https://github.com/Alaaldin97)
 
@@ -20,7 +32,7 @@ Created by [@Alaaldin97](https://github.com/Alaaldin97)
 ```
 warraq/
 ├── engine/            Python conversion engine (the product's core asset)
-│   ├── kbo/           19 modules — analysis, cleanup, OCR, typography, build, QA
+│   ├── kbo/           18 modules — analysis, cleanup, OCR, typography, build, QA
 │   ├── assets/        Amiri and the other Arabic font profiles (SIL OFL)
 │   ├── tools/         Tesseract language data
 │   ├── tests/         regression tests
@@ -33,93 +45,86 @@ warraq/
 └── installer/         WiX packaging — planned, not yet started (Phase 5)
 ```
 
-**Design rule:** the shell contains *zero* conversion logic. Everything that
-affects output quality lives in the engine, so the GUI and the CLI can never
-diverge.
-
 ---
 
 ## How it fits together
 
-The desktop app and the command line are two front ends over one engine. They
-speak newline-delimited JSON-RPC over stdio, so the GUI can stream live
-progress without owning any conversion behaviour.
-
-```mermaid
-flowchart TB
-    subgraph shell["Desktop shell — Tauri 2"]
-        ui["React 18 + Fluent UI<br/>queue, progress, results"]
-        rust["Rust bridge<br/>spawns sidecar, routes events by job id"]
-        ui <--> rust
-    end
-
-    cli["Command line<br/>python -m kbo.cli"]
-
-    subgraph engine["Engine — Python"]
-        rpc["rpc.py<br/>job queue, stage events"]
-        pipe["Conversion pipeline<br/>kbo/"]
-        rpc --> pipe
-    end
-
-    subgraph ext["External, invoked as separate processes"]
-        az["Azure Document Intelligence<br/>optional, bring your own key"]
-        tess["Tesseract<br/>offline fallback"]
-        cal["Calibre ebook-convert<br/>GPL — never linked in-process"]
-    end
-
-    out["Kindle files + quality report"]
-
-    rust <-->|"JSON-RPC over stdio"| rpc
-    cli --> pipe
-    pipe --> ext
-    ext --> out
-```
-
-## The conversion pipeline
-
-Every book is inspected first, then routed down one of three paths. Percentages
-are the progress weights the UI uses; reading text dominates the run.
-
-```mermaid
-flowchart TB
-    pdf["PDF"] --> analyze["Analyse · 13%"]
-    analyze --> route{"Text layer?"}
-
-    route -->|"native text"| reflow["Reflow"]
-    route -->|"scanned<br/>or mixed"| clean["Clean & deskew · 13%"]
-    route -->|"dense<br/>multi-column"| fixed["Page-exact"]
-
-    clean --> ocr["Read text · 52%"]
-    ocr --> extract
-    reflow --> extract["Rebuild document · 4%"]
-
-    extract --> typo["Apply typography · 3%<br/>pre-shape Arabic, embed Amiri"]
-    typo --> build["Build Kindle files · 9%"]
-    fixed --> build
-    build --> qa{"Quality gate · 6%"}
-
-    qa -->|"pass"| ok["Reflowable AZW3<br/>+ searchable + PDF"]
-    qa -->|"fail"| fallback["Page-exact edition<br/>recommended instead"]
-```
-
-The gate is not decorative: a book that fails shaping validation, font-subsetting
-or content-recall checks is **not** shipped as a reflowable ebook. The engine
-falls back to the page-exact edition and says so in the report.
-
-## Why Arabic needs the extra step
-
-Kindle firmware does not apply GSUB shaping to embedded fonts, so Arabic set in
-a custom face renders as disconnected letters. Warraq pre-shapes text into
-presentation forms before embedding — established by testing on real hardware,
-not inferred from the spec.
+The desktop app and the command line are two front ends over one engine, so the
+GUI and the CLI can never disagree about output quality.
 
 ```mermaid
 flowchart LR
-    src["Logical Arabic<br/>ﺏ + ﻱ + ﺕ"] --> shape["Pre-shape to<br/>presentation forms"]
-    shape --> flat["Flatten font<br/>fontfix.py"]
-    flat --> embed["Embed unsubsetted<br/>subsetting breaks joining"]
-    embed --> dev["Correct joining<br/>on device"]
+    ui["Desktop app<br/>Tauri + React"] -->|JSON-RPC| eng
+    cli["Command line<br/>python -m kbo.cli"] --> eng
+
+    eng["Warraq engine<br/>Python"] --> ocr{"OCR needed?"}
+    ocr -->|offline| tess["Tesseract<br/>free"]
+    ocr -->|optional| az["Azure AI<br/>your own resource"]
+
+    tess --> out["Kindle files<br/>+ quality report"]
+    az --> out
+
+    style eng fill:#141210,color:#C9A227
+    style tess fill:#1F5D3A,color:#fff
+    style az fill:#2E6F8E,color:#fff
+    style out fill:#C9A227,color:#000
 ```
+
+**Design rule:** the shell contains *zero* conversion logic. Everything that
+affects output quality lives in the engine.
+
+## The conversion pipeline
+
+Every book is inspected first, then sent down whichever path suits it. Most of
+the time is spent reading text.
+
+```mermaid
+flowchart LR
+    pdf["PDF"] --> look{"Has a<br/>text layer?"}
+    look -->|yes| rebuild["Rebuild"]
+    look -->|no| read["Read the pages<br/>OCR"]
+    read --> rebuild
+    rebuild --> type["Set in Amiri<br/>pre-shaped"]
+    type --> gate{"Quality<br/>gate"}
+    gate -->|pass| good["Reflowable ebook<br/>+ searchable + PDF"]
+    gate -->|fail| safe["Page-exact edition<br/>instead"]
+
+    style good fill:#1F5D3A,color:#fff
+    style safe fill:#A6552F,color:#fff
+    style gate fill:#C9A227,color:#000
+```
+
+The gate is not decorative. A book that fails shaping validation, font
+subsetting or content-recall checks is **not** shipped as a reflowable ebook —
+Warraq falls back to the page-exact edition and says so in the report. It would
+rather give you a photograph of the page than corrupted Arabic.
+
+## Why Arabic needs the extra step
+
+<p align="center">
+  <img src="docs/assets/shaping.svg" alt="The same Arabic word shown twice: without pre-shaping the letters stand apart and are unreadable; with pre-shaping they join correctly" width="100%">
+</p>
+
+Arabic letters change shape depending on their neighbours. Kindle firmware does
+not apply that shaping to an **embedded** font, so Arabic set in a custom
+typeface arrives as a row of disconnected letters — the left panel above.
+
+Warraq converts the text into its final presentation forms *before* embedding,
+so the device has no shaping left to do. That is the right panel, and it is what
+lands on your Kindle.
+
+This was established by testing on real hardware, not inferred from the spec.
+Two consequences are worth knowing:
+
+- Pre-shaped text cannot be searched with the plain Arabic keyboard, so every
+  book also ships a **searchable companion** file that keeps normal Unicode.
+  Read the pre-shaped one; keep the companion for search and dictionary lookup.
+- **Harakat are currently dropped from the pre-shaped edition.** The reshaper
+  removes them by default, so a fully vocalised text (وَرَّاق) reaches the main
+  AZW3 as وراق. The searchable companion keeps them, because it is not
+  pre-shaped. Restoring them means placing every mark by GPOS on a device that
+  may not honour it for embedded fonts — that needs testing on real hardware
+  before it is claimed to work. Tracked as a known limitation, not fixed.
 
 ---
 

@@ -5,3 +5,8 @@ pytest>=8.0
 
 # Only needed to build the frozen sidecar (python -m PyInstaller engine.spec).
 pyinstaller>=6.0
+
+# Only needed to regenerate the README artwork
+# (python scripts/make_artwork.py). HarfBuzz does the Arabic shaping and,
+# critically, the mark positioning that puts the shadda in the right place.
+uharfbuzz>=0.39
