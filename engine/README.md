@@ -15,7 +15,7 @@ troubleshooting, see the [main README](../README.md).
 | Calibre 9.x | AZW3 generation, metadata, QA round-trip | `winget install calibre.calibre` |
 | Tesseract 5.x | Offline OCR (English + Arabic) | `winget install UB-Mannheim.TesseractOCR` |
 | `tools/tessdata` | Bundled `ara` + `eng` from `tessdata_best`, **plus the `configs/` folder** (without it, TSV output silently degrades to plain text and confidence reads 0) | ships with the repo |
-| Python 3.12+ | pipeline | `pip install pymupdf opencv-python-headless numpy fonttools arabic-reshaper` |
+| Python 3.12+ | pipeline | `pip install -r requirements.txt` |
 | `assets/Amiri-*.ttf` | embedded Arabic font (SIL OFL, embeddable) | ships with the repo |
 | Azure Document Intelligence *(optional)* | better Arabic OCR on scans; bring your own resource | see [main README](../README.md#setting-up--connecting-your-own-azure) |
 | k2pdfopt *(optional)* | alternative crop/reflow engine | manual download from willus.com (captcha-gated; drop `k2pdfopt.exe` into `tools\`) |

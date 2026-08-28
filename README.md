@@ -185,7 +185,8 @@ Verified on Python 3.14.5, Calibre 9.13.0 and Tesseract 5.4.0.
 | MSVC Build Tools | Rust linker on Windows | `winget install Microsoft.VisualStudio.2022.BuildTools` with the VCTools workload |
 
 ```powershell
-pip install pymupdf opencv-python-headless numpy fonttools arabic-reshaper pyinstaller pytest
+cd engine
+pip install -r requirements.txt -r requirements-dev.txt
 ```
 
 ### Do I need an Azure subscription?
@@ -273,7 +274,15 @@ winget install UB-Mannheim.TesseractOCR
 **2. Install the Python dependencies**
 
 ```powershell
-pip install pymupdf opencv-python-headless numpy fonttools arabic-reshaper pytest
+cd engine
+pip install -r requirements.txt
+```
+
+Add the development extras if you intend to run the tests or build the frozen
+sidecar:
+
+```powershell
+pip install -r requirements.txt -r requirements-dev.txt
 ```
 
 **3. Check Tesseract landed where Warraq looks for it**

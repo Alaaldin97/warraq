@@ -1,0 +1,21 @@
+# Warraq engine runtime dependencies.
+#
+# Lower bounds, not pins: this is an application people run from source, and
+# hard pins age badly. The floors below are the versions the engine is
+# actually tested against.
+#
+#   pip install -r requirements.txt
+#
+# PyMuPDF >= 1.24.3 matters specifically. That release introduced the
+# `pymupdf` module name; importing the older `fitz` alias makes recent
+# versions print a deprecation warning to stdout, which corrupts the
+# newline-delimited JSON the desktop shell reads from the engine.
+pymupdf>=1.24.3
+opencv-python-headless>=4.9
+numpy>=1.26
+fonttools>=4.50
+arabic-reshaper>=3.0
+
+# Calibre and Tesseract are separate programs, not Python packages. See the
+# README for how to install them, and note that Tesseract is required even
+# when using Azure - it is the fallback.

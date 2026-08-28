@@ -8,7 +8,7 @@ from __future__ import annotations
 import re
 import statistics
 
-import fitz
+import pymupdf as fitz
 
 from . import analyze as _an
 from . import arabic

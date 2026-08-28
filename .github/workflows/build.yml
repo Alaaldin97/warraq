@@ -23,9 +23,8 @@ jobs:
           cache: pip
 
       - name: Install dependencies
-        run: |
-          pip install pymupdf opencv-python-headless numpy fonttools `
-                      arabic-reshaper pytest pyinstaller
+        working-directory: engine
+        run: pip install -r requirements.txt -r requirements-dev.txt
 
       # Calibre and Tesseract are probed at runtime; the suite skips the
       # checks that need them rather than failing.

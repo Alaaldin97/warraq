@@ -16,7 +16,7 @@ import sys
 import time
 
 import cv2
-import fitz
+import pymupdf as fitz
 import numpy as np
 
 from . import analyze as anz
@@ -172,7 +172,7 @@ def azure_ocr_pages(pdf: str, a: dict, pages_rendered: list[dict],
     chunks: this keeps each upload modest, survives flaky links, and lets a
     single failed chunk fall back without losing the whole book.
     """
-    import fitz
+    import pymupdf as fitz
     results: dict[int, list[dict]] = {}
     confs = []
     total = (len(pages_rendered) + chunk - 1) // chunk

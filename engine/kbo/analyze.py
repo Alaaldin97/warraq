@@ -12,7 +12,7 @@ import math
 import re
 
 import cv2
-import fitz
+import pymupdf as fitz
 import numpy as np
 
 from . import arabic

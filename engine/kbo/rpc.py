@@ -276,7 +276,7 @@ def _warm_imports() -> None:
     """Preload the heavy scientific stack off the critical path."""
     try:
         import cv2          # noqa: F401
-        import fitz         # noqa: F401
+        import pymupdf as fitz         # noqa: F401
         import numpy        # noqa: F401
 
         from kbo import analyze, build, clean, extract, ocr, qa  # noqa: F401
@@ -336,7 +336,7 @@ def _probe_language(path: str, a: dict) -> str | None:
     """OCR a couple of sampled pages to name the language of a scanned book."""
     try:
         import cv2
-        import fitz
+        import pymupdf as fitz
 
         from kbo import analyze as anz
         from kbo import arabic, clean, ocr

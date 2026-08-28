@@ -8,7 +8,7 @@ import sys
 import zipfile
 
 import cv2
-import fitz
+import pymupdf as fitz
 import numpy as np
 
 from . import device as dev

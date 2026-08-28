@@ -123,7 +123,7 @@ def verify_output(path: str, source_text: str, rtl: bool,
         res["opens"] = bool(text.strip()) or res["size_bytes"] > 20000
     elif ext == ".pdf":
         try:
-            import fitz
+            import pymupdf as fitz
             d = fitz.open(path)
             res["pages"] = d.page_count
             raw = "\n".join(d[i].get_text() for i in range(d.page_count))
