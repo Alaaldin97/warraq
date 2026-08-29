@@ -825,7 +825,7 @@ function ResultsView(
           <Check ok={ty.rtlValidated} label="Right-to-left validated" />
           <Check ok={ty.shapingValid}
                  label={`Letter joining verified · ${ty.wordsChecked.toLocaleString()} words`} />
-          <Check ok={ty.issues.length === 0} label="Diacritics preserved" />
+          <Check ok={ty.issues.length === 0} label="No shaping issues" />
         </Card>
       )}
 
