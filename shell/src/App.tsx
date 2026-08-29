@@ -397,9 +397,22 @@ function LibraryView(
       </div>
 
       <button
-        className={`dropzone${dragging ? " dragging" : ""}`}
+        className={`dropzone${dragging ? " dragging" : ""}${
+          jobs.length === 0 ? " hero" : ""
+        }`}
         onClick={onPick}
       >
+        {jobs.length === 0 && (
+          <div className="hero-mark" aria-hidden="true">
+            <div className="hero-word" />
+            <div className="hero-rule">
+              <span /><i /><span />
+            </div>
+            <Text size={200} className="hero-gloss">
+              warrāq · the copyist who reproduced books by hand
+            </Text>
+          </div>
+        )}
         <DocumentAdd24Regular fontSize={32} />
         <Text size={500} weight="semibold">
           {dragging ? "Release to add these books" : "Drop PDF books here"}

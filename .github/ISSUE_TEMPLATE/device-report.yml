@@ -1,0 +1,75 @@
+name: Device report
+description: Tell us how the output looked on your Kindle
+labels: ["device-report"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Only the Kindle Oasis 9 has been verified on real hardware. Everything
+        else is inference, and inference is exactly how Arabic rendering bugs
+        get missed — three separate shaping bugs in this project were invisible
+        until a real device rendered them.
+
+        A photograph of the page is worth more than any description.
+
+  - type: input
+    id: device
+    attributes:
+      label: Which Kindle
+      placeholder: "Paperwhite 11th gen (2021), firmware 5.16.2.1.1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: file
+    attributes:
+      label: Which file did you side-load
+      options:
+        - "..._AZW3.azw3 (the pre-shaped one, recommended for reading)"
+        - "..._Searchable.azw3 (device font, searchable)"
+        - "..._FixedLayout.azw3 (page-exact)"
+        - "..._Optimized.pdf"
+      multiple: true
+    validations:
+      required: true
+
+  - type: dropdown
+    id: joining
+    attributes:
+      label: Did the Arabic letters join correctly
+      options:
+        - "Yes — reads normally"
+        - "No — letters stood apart"
+        - "Partly — some words joined, some did not"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: harakat
+    attributes:
+      label: If the book had harakat, did they appear
+      description: >
+        A known limitation: the pre-shaped edition currently drops them. A
+        report either way settles whether the device would place them at all.
+      options:
+        - "Book had no harakat"
+        - "Missing, as documented"
+        - "Present and correctly positioned"
+        - "Present but in the wrong place"
+
+  - type: textarea
+    id: photo
+    attributes:
+      label: Photograph
+      description: >
+        Drag an image straight into this box. A close-up of a paragraph is
+        ideal. Please avoid photographing a book that is still in copyright
+        beyond a short excerpt.
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: "Margins, line spacing, page turns, the TOC, cover, anything that looked off."

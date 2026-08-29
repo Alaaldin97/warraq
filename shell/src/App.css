@@ -146,6 +146,70 @@ html, body, #root {
   transform: scale(1.01);
 }
 
+/* ------------------------------------------------- empty-state wordmark */
+/* With nothing in the queue the drop target is the whole screen, so it
+   carries the wordmark rather than sitting under a blank expanse. The mark
+   is a mask, not an <img>, so it takes its colour from the theme. */
+.dropzone.hero {
+  padding: 40px 20px 40px;
+  gap: 6px;
+}
+.hero-mark {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 22px;
+  user-select: none;
+}
+.hero-word {
+  width: 232px;
+  height: 108px;
+  background: linear-gradient(160deg, #D9B441 0%, #C9A227 45%, #A8841C 100%);
+  -webkit-mask: url("./assets/wordmark.svg") center / contain no-repeat;
+  mask: url("./assets/wordmark.svg") center / contain no-repeat;
+  opacity: 0.92;
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+}
+.hero-rule {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  opacity: 0.5;
+}
+.hero-rule span {
+  display: block;
+  width: 68px;
+  height: 1px;
+  background: #C9A227;
+}
+.hero-rule i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #C9A227;
+}
+.hero-gloss {
+  color: var(--colorNeutralForeground3);
+  letter-spacing: 0.02em;
+}
+.dropzone.hero:hover .hero-word {
+  opacity: 1;
+  transform: translateY(-2px);
+}
+.dropzone.hero.dragging .hero-word {
+  opacity: 0.35;
+  transform: scale(0.96);
+}
+@media (prefers-color-scheme: dark) {
+  .hero-word {
+    background: linear-gradient(160deg, #E8C766 0%, #C9A227 55%, #9C7A18 100%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-word { transition: none; }
+}
+
 /* -------------------------------------------------------------- cards */
 .panel {
   padding: 16px 18px;

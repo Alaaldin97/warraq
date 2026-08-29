@@ -1,0 +1,89 @@
+name: Conversion problem
+description: A book converted badly, or did not convert at all
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing a pre-alpha. The conversion report saved next to the
+        output answers most of the questions below, so attaching it is the
+        single most useful thing you can do.
+
+        **Please do not attach the book itself** unless it is public domain —
+        most scanned books are still in copyright.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you expect, and what did you get instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: report
+    attributes:
+      label: Conversion report
+      description: >
+        Paste the contents of `<book>_ConversionReport.txt`, or at least the
+        sections on route, OCR confidence and QA. Redact the title if needed.
+      render: text
+
+  - type: dropdown
+    id: ocr-mode
+    attributes:
+      label: OCR mode
+      options:
+        - Offline (Tesseract)
+        - Azure Document Intelligence
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: how-run
+    attributes:
+      label: How were you running it
+      options:
+        - Desktop app
+        - Command line (python -m kbo.cli)
+        - Both
+    validations:
+      required: true
+
+  - type: input
+    id: book-kind
+    attributes:
+      label: What kind of book
+      description: >
+        Language, roughly how old the scan looks, page count, and whether the
+        PDF already had selectable text. No title needed.
+      placeholder: "Arabic, scanned from a 1960s print, ~300 pages, no text layer"
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log output
+      description: >
+        For the CLI, the console output. For the app, whatever the job's log
+        panel showed. The lines around the failure are the useful part.
+      render: shell
+
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: "Windows build, Python, Calibre, Tesseract"
+      placeholder: "Windows 11 26200, Python 3.12.4, Calibre 9.13, Tesseract 5.4.0"
+
+  - type: checkboxes
+    id: known
+    attributes:
+      label: Before you file
+      options:
+        - label: >
+            I checked the known limitations in the README — diacritics are
+            currently dropped from the pre-shaped edition.
+          required: true

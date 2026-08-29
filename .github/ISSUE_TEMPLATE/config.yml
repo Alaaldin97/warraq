@@ -1,0 +1,12 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Question or idea
+    url: https://github.com/Alaaldin97/warraq/discussions
+    about: >
+      For "does this work with X", "how do I…", or anything you are not sure is
+      a bug. Discussions is a better home for it than an issue.
+  - name: Security vulnerability
+    url: https://github.com/Alaaldin97/warraq/security/advisories/new
+    about: >
+      Please report privately rather than opening a public issue. See
+      SECURITY.md.

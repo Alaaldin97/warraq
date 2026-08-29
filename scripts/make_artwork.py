@@ -296,6 +296,29 @@ def shaping(g: Face, gb: Face) -> str:
 """
 
 
+def wordmark(g: Face) -> str:
+    """The word alone, on a transparent ground, for use inside the app.
+
+    No frame and no colour of its own - it is drawn in currentColor so the UI
+    can tint it per theme. Sized from measured ink so it never clips.
+    """
+    word = "وَرَّاق"
+    size = 200
+    drop = min(0.40, safe_mark_drop(g, word))
+    above, below = g.extents(word, size)
+    above -= drop * size
+    pad = 8
+    w = width(g, word, size) + pad * 2
+    base = pad + above
+    h = base + below + pad
+
+    return f"""<svg xmlns="http://www.w3.org/2000/svg" width="{w:.0f}" height="{h:.0f}"
+     viewBox="0 0 {w:.0f} {h:.0f}" role="img" aria-label="وراق Warraq">
+{centred(g, word, size, w / 2, base, "currentColor", mark_drop=drop)}
+</svg>
+"""
+
+
 def main() -> int:
     for f in (AMIRI, AMIRI_BOLD):
         if not f.exists():
@@ -330,9 +353,17 @@ def main() -> int:
         return 1
 
     for name, svg in (("banner.svg", banner(g, gb)),
-                      ("shaping.svg", shaping(g, gb))):
+                      ("shaping.svg", shaping(g, gb)),
+                      ("wordmark.svg", wordmark(g))):
         (OUT / name).write_text(svg, encoding="utf-8")
         print(f"wrote {(OUT / name).relative_to(ROOT)}")
+
+    # The app ships its own copy so it renders offline, with no network and no
+    # dependency on the docs folder surviving a packaging step.
+    app_copy = ROOT / "shell" / "src" / "assets" / "wordmark.svg"
+    app_copy.parent.mkdir(parents=True, exist_ok=True)
+    app_copy.write_text(wordmark(g), encoding="utf-8")
+    print(f"wrote {app_copy.relative_to(ROOT)}")
     return 0
 
 

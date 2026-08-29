@@ -27,6 +27,27 @@ Created by **[Alaaldin Ahmed](https://www.linkedin.com/in/alaaldin-ahmed/)** · 
 
 ---
 
+## The app
+
+<p align="center">
+  <img src="docs/assets/screenshot-library.png" alt="Warraq's library view: a drop area for PDF books, with the Arabic wordmark and the status bar showing the engine is ready" width="100%">
+</p>
+
+Drop in a stack of PDFs and leave it. Each book is inspected, routed, converted
+and checked on its own, and the status bar tells you which OCR engine is live
+and which Arabic typeface is being applied.
+
+<p align="center">
+  <img src="docs/assets/screenshot-settings.png" alt="Warraq's settings: five Arabic typefaces, and a choice between free offline OCR and Azure Document Intelligence" width="100%">
+</p>
+
+The OCR choice is two clicks and reversible. **Offline is the default** — free,
+no account, nothing leaves the machine. Point it at your own Azure resource only
+if you want the extra accuracy on difficult scans; **Test connection** performs a
+real recognition call rather than just checking that a string was saved.
+
+---
+
 ## Repository layout
 
 ```
