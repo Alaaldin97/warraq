@@ -3,9 +3,10 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/Alaaldin97/warraq/releases/latest"><img alt="Download" src="https://img.shields.io/badge/download-0.9.0%20pre--alpha-C9A227?style=flat-square"></a>
   <a href="#setting-up--the-free-path"><img alt="Free and offline" src="https://img.shields.io/badge/works-free%20%26%20offline-1F5D3A?style=flat-square"></a>
   <a href="#setting-up--connecting-your-own-azure"><img alt="Optional Azure" src="https://img.shields.io/badge/optional-Azure%20AI-2E6F8E?style=flat-square"></a>
-  <img alt="Platform" src="https://img.shields.io/badge/platform-Windows-C9A227?style=flat-square">
+  <img alt="Platform" src="https://img.shields.io/badge/platform-Windows-6B6B6B?style=flat-square">
   <a href="LICENSE"><img alt="Licence" src="https://img.shields.io/badge/licence-AGPL--3.0-A6552F?style=flat-square"></a>
   <img alt="Tests" src="https://img.shields.io/badge/tests-97%20passing-1F5D3A?style=flat-square">
 </p>
@@ -24,6 +25,25 @@ Created by **[Alaaldin Ahmed](https://www.linkedin.com/in/alaaldin-ahmed/)** · 
 > The desktop shell runs and handles conversion, settings and OCR mode switching;
 > packaging and the installer are not done yet.
 > See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the full specification.
+
+---
+
+## Try it
+
+**[Download Warraq 0.9.0 pre-alpha](https://github.com/Alaaldin97/warraq/releases/latest)** ·
+Windows · 85 MB · no Python, Node or Rust required
+
+Unzip and run `warraq.exe`. Two external programs must be installed first,
+because Warraq drives them:
+
+```powershell
+winget install calibre.calibre
+winget install UB-Mannheim.TesseractOCR
+```
+
+The build is unsigned, so SmartScreen will warn you; the release page lists a
+SHA-256 if you would rather verify than trust. To run from source instead, see
+[the free path](#setting-up--the-free-path).
 
 ---
 
